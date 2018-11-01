@@ -36,6 +36,17 @@ namespace etcdv3
     void cancelWatch();
     int64_t lastRevision() const;
 
+    void printResponse(std::string const & msg)
+    {
+      std::cerr << msg << "\n"
+                << "Created:" << response.created() << "\n"
+                << "Canceled:" << response.canceled() << "\n"
+                << "Revision:" << response.header().revision() << "\n"
+                << "Compact revision:" << response.compact_revision() << "\n"
+                << "Has header:" << response.has_header() << "\n"
+                << "Events size:" << response.events_size() << std::endl;
+    }
+
   private:
     WatchResponse response;
     int64_t revision;

@@ -6,7 +6,7 @@
 etcd::Watcher::Watcher(
     std::string const & address,
     std::string const & key,
-    std::function<void(Response)> callback,
+    etcd::watch_callback callback,
     pplx::task_options const & task_options)
   : Watcher::Watcher(etcd::utils::createChannel(address), key, true, 0, callback, task_options)
 {}
@@ -14,7 +14,7 @@ etcd::Watcher::Watcher(
 etcd::Watcher::Watcher(
     std::shared_ptr<grpc::Channel> const & channel,
     std::string const & key,
-    std::function<void(Response)> callback,
+    etcd::watch_callback callback,
     pplx::task_options const & task_options)
   : Watcher::Watcher(channel, key, true, 0, callback, task_options)
 {}
@@ -24,7 +24,7 @@ etcd::Watcher::Watcher(
     std::string const & key,
     bool const recursive,
     int const fromRevision,
-    std::function<void(Response)> callback,
+    etcd::watch_callback callback,
     pplx::task_options const & task_options)
   : Watcher::Watcher(etcd::utils::createChannel(address), key, recursive, fromRevision, callback, task_options)
 {}
@@ -34,7 +34,7 @@ etcd::Watcher::Watcher(
     std::string const & key,
     bool const recursive,
     int const fromRevision,
-    std::function<void(Response)> callback,
+    etcd::watch_callback callback,
     pplx::task_options const & task_options)
   : channel(channel)
   , watchServiceStub(Watch::NewStub(channel))

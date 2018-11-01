@@ -16,7 +16,11 @@ namespace etcdv3
     UNDERLYING_GRPC_ERROR = 900,
     OTHER_ERROR = 901,
     USER_DEFINED_ERROR = 902,
-    UNKNOWN_ERROR = 903
+    UNKNOWN_ERROR = 903,
+    WATCH_COMPACTED_REVISION = 1004,
+    WATCH_CANCELED_BY_USER = 1005,
+    WATCH_CANCELED_BY_SERVER = 1006,
+    WATCH_CANCELATION_ERROR = 1007
   };
 
   /// Class representing both etcd and gRPC status codes and error messages

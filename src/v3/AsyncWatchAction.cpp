@@ -37,14 +37,17 @@ etcdv3::AsyncWatchAction::AsyncWatchAction(etcdv3::ActionParameters param)
   bool ok = false;
   if (cq_.Next(&got_tag, &ok) && ok && got_tag == (void*)"create")
   {
+    printResponse("AFTER CREATE:");
     stream->Write(watch_req, (void*)"write");
     ok = false;
     if (cq_.Next(&got_tag, &ok) && ok && got_tag == (void*)"write")
     {
+      printResponse("AFTER WRITE:");
       stream->Read(&response, (void*)this);
       ok = false;
       if (cq_.Next(&got_tag, &ok) && ok && got_tag == (void*)this)
       {
+        printResponse("AFTER FIRST READ:");
         // parse create response
         storeLastRevision();
         if (response.compact_revision() > 0)
