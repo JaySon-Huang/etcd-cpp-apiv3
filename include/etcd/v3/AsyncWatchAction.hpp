@@ -38,6 +38,7 @@ namespace etcdv3
 
   private:
     WatchResponse response;
+    int64_t _watchId;
     int64_t revision;
     bool isCancelled;
     std::unique_ptr<ClientAsyncReaderWriter<WatchRequest, WatchResponse>> stream;

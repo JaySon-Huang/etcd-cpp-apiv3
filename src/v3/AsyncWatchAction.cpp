@@ -5,13 +5,24 @@
 using etcdserverpb::RangeRequest;
 using etcdserverpb::RangeResponse;
 using etcdserverpb::WatchCreateRequest;
+using etcdserverpb::WatchCancelRequest;
 
+enum class Type {
+    Create = 1,
+    Write = 2,
+    Read = 3,
+    Finish = 4,
+    WritesDone = 5,
+    WriteWatchCancel = 6,
+    ReadWatchCancel = 7,
+    CancelWatch = 8,
+};
 
 etcdv3::AsyncWatchAction::AsyncWatchAction(etcdv3::ActionParameters param)
   : etcdv3::Action(std::move(param))
   , revision(parameters.revision)
   , isCancelled(false)
-  , stream(parameters.watch_stub->AsyncWatch(&context, &cq_, (void*)"create"))
+  , stream(parameters.watch_stub->AsyncWatch(&context, &cq_, reinterpret_cast<void*>(Type::Create)))
 {
   WatchRequest watch_req;
   {
@@ -35,16 +46,17 @@ etcdv3::AsyncWatchAction::AsyncWatchAction(etcdv3::ActionParameters param)
 
   void * got_tag;
   bool ok = false;
-  if (cq_.Next(&got_tag, &ok) && ok && got_tag == (void*)"create")
+  if (cq_.Next(&got_tag, &ok) && ok && got_tag == reinterpret_cast<void*>(Type::Create))
   {
-    stream->Write(watch_req, (void*)"write");
+    stream->Write(watch_req, reinterpret_cast<void*>(Type::Write));
     ok = false;
-    if (cq_.Next(&got_tag, &ok) && ok && got_tag == (void*)"write")
+    if (cq_.Next(&got_tag, &ok) && ok && got_tag == reinterpret_cast<void*>(Type::Write))
     {
-      stream->Read(&response, (void*)this);
+      stream->Read(&response, reinterpret_cast<void*>(Type::Read));
       ok = false;
-      if (cq_.Next(&got_tag, &ok) && ok && got_tag == (void*)this)
+      if (cq_.Next(&got_tag, &ok) && ok && got_tag == reinterpret_cast<void*>(Type::Read))
       {
+        _watchId = response.watch_id();
         // parse create response
         storeLastRevision();
         if (response.compact_revision() > 0)
@@ -59,7 +71,7 @@ etcdv3::AsyncWatchAction::AsyncWatchAction(etcdv3::ActionParameters param)
         {
           throw async_watch_error("watch had not been created on etcd server");
         }
-        stream->Read(&response, (void*)this);
+        stream->Read(&response, reinterpret_cast<void*>(Type::Read));
       }
       else
       {
@@ -83,26 +95,39 @@ etcdv3::AsyncWatchAction::AsyncWatchAction(etcdv3::ActionParameters param)
 // TODO: throw in case of !ok
 void etcdv3::AsyncWatchAction::waitForResponse() 
 {
-  void* got_tag;
+  // NOTE(leo): Where is this function called?
+  void * got_tag;
   bool ok = false;
-  
-  while(cq_.Next(&got_tag, &ok))
-  {
-    // if not ok or unknown tag received (or write done), break watch
-    if (!ok || got_tag != (void*)this)
-    {
-      cq_.Shutdown();
-      break;
-    }
 
-    // ok and got tag is for read
-    if(response.events_size())
-    {
-      stream->WritesDone((void*)"writes done");
-    }
-    else
-    {
-      stream->Read(&response, (void*)this);
+  while (true) {
+    if (cq_.Next(&got_tag, &ok)) {
+      if (!ok) {
+        cq_.Shutdown();
+        continue;
+      }
+
+      auto tagType = static_cast<Type>(reinterpret_cast<size_t>(got_tag));
+
+      switch (tagType) {
+        case Type::Read: {
+          storeLastRevision();
+
+          if (response.events_size()) {
+            stream->WritesDone(reinterpret_cast<void*>(Type::WritesDone));
+          } else {
+            stream->Read(&response, reinterpret_cast<void*>(Type::Read));
+          }
+          break;
+        }
+        default: {
+          context.TryCancel();
+          cq_.Shutdown();
+          break;
+        }
+      }
+    } else {
+      // Completion queue is shut down and drained
+      break;
     }
   }
 }
@@ -112,7 +137,7 @@ void etcdv3::AsyncWatchAction::cancelWatch()
 {
   if (!isCancelled)
   {
-    //check if cq_ is ok
+//    check if cq_ is ok
     isCancelled = true;
     void * got_tag;
     bool ok = false;
@@ -120,9 +145,17 @@ void etcdv3::AsyncWatchAction::cancelWatch()
     deadline.clock_type = GPR_TIMESPAN;
     deadline.tv_sec = 0;
     deadline.tv_nsec = 10000000;
+
     if (cq_.AsyncNext(&got_tag, &ok, deadline) != CompletionQueue::SHUTDOWN)
     {
-      stream->WritesDone((void*)"writes done");
+      WatchRequest watch_req;
+      {
+        WatchCancelRequest watch_cancel_req;
+        watch_cancel_req.set_watch_id(_watchId);
+        *(watch_req.mutable_cancel_request()) = std::move(watch_cancel_req);
+      }
+
+      stream->Write(watch_req, reinterpret_cast<void*>(Type::WriteWatchCancel));
     }
   }
 }
@@ -146,29 +179,46 @@ void etcdv3::AsyncWatchAction::waitForResponse(watch_callback const & callback)
   void * got_tag;
   bool ok = false;
 
-  while (cq_.Next(&got_tag, &ok))
-  {
-    // if not ok or unknown tag received (or write done), break watch
-    if (!ok || got_tag != (void*)this)
-    {
-      cq_.Shutdown();
+  while (true) {
+    if (cq_.Next(&got_tag, &ok)) {
+      if (!ok) {
+        cq_.Shutdown();
+        continue;
+      }
+
+      auto tagType = static_cast<Type>(reinterpret_cast<size_t>(got_tag));
+
+      switch (tagType) {
+        case Type::Read: {
+          storeLastRevision();
+
+          if (response.events_size()) {
+            try {
+              callback(etcd::Response(ParseResponse()));
+            } catch (...) {}
+          }
+
+          stream->Read(&response, reinterpret_cast<void*>(Type::Read));
+          break;
+        }
+        case Type::WriteWatchCancel: {
+          stream->WritesDone(reinterpret_cast<void*>(Type::WritesDone));
+          break;
+        }
+        case Type::WritesDone: {
+          context.TryCancel();
+          cq_.Shutdown();
+          break;
+        }
+        default: {
+          cq_.Shutdown();
+          break;
+        }
+      }
+    } else {
+      // Completion queue is shut down and drained
       break;
     }
-
-    storeLastRevision();
-
-    // if ok and read done, call callback (only if reply has events) and just read again
-    if (response.events_size())
-    {
-      // callback is responsible for errors handling, all raised exceptions will be ignored
-      try
-      {
-        callback(etcd::Response(ParseResponse()));
-      }
-      catch (...)
-      {}
-    }
-    stream->Read(&response, (void *)this);
   }
 }
 

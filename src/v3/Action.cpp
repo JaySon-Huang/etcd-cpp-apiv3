@@ -5,7 +5,7 @@ etcdv3::Action::Action(ActionParameters params)
   : parameters(std::move(params))
 {}
 
-void etcdv3::Action::waitForResponse() 
+void etcdv3::Action::waitForResponse()
 {
   void * got_tag;
   bool ok = false;

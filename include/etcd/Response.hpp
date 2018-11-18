@@ -17,8 +17,9 @@ namespace etcd
   /**
    * The Reponse object received for the requests of etcd::Client
    */
-  struct Response
+  class Response
   {
+  public:
     int64_t          revision = 0;
     etcd::Status     status;
     std::string      action;

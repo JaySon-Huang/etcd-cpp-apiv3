@@ -167,3 +167,8 @@ void etcdv3::Transaction::setup_lease_grant_operation(int ttl)
 {
   leasegrant_request.set_ttl(ttl);
 }
+
+void etcdv3::Transaction::setup_lease_keep_alive_operation(int64_t id)
+{
+    lease_keep_alive_request.set_id(id);
+}

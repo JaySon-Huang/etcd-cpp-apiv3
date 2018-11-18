@@ -1,12 +1,10 @@
 cmake_minimum_required (VERSION 3.1.3 FATAL_ERROR)
 project (etcd-cpp-api)
 
-set(LIBRARY_TYPE SHARED)
-
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE RELEASE)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic -Werror")
+#set(CMAKE_CXX_STANDARD_REQUIRED ON)
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wpedantic")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 set(CMAKE_THREAD_PREFER_PTHREAD)
@@ -26,17 +24,11 @@ if (COMPILER_OPT_ARCH_NATIVE_SUPPORTED)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
 endif()
 
-find_library(CPPREST_LIB NAMES cpprest)
-find_path(CPPREST_INCLUDE_DIR NAMES cpprest/http_client.h)
-
-find_package(Boost REQUIRED COMPONENTS system thread locale random)
-find_package(cpprestsdk REQUIRED)
-
 set(SRC_ROOT "${PROJECT_SOURCE_DIR}/src")
 set(HDR_ROOT "${PROJECT_SOURCE_DIR}/include/")
 set(TST_ROOT "${PROJECT_SOURCE_DIR}/test")
 
-include_directories(SYSTEM ${CPPREST_INCLUDE_DIR} ${Boost_INCLUDE_DIR})
+#include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 include_directories(${HDR_ROOT})
 
 add_subdirectory(${SRC_ROOT})
