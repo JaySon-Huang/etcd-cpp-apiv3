@@ -1,6 +1,9 @@
 cmake_minimum_required (VERSION 3.1.3 FATAL_ERROR)
 project (etcd-cpp-api)
 
+# set verbose make output. set it to debug with cmake
+set(CMAKE_VERBOSE_MAKEFILE OFF)
+
 set(LIBRARY_TYPE SHARED)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -28,7 +31,8 @@ endif()
 
 find_library(CPPREST_LIB NAMES cpprest)
 find_path(CPPREST_INCLUDE_DIR NAMES cpprest/http_client.h)
-
+# Add protobuf support
+find_package(Protobuf REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system thread locale random)
 find_package(cpprestsdk REQUIRED)
 
@@ -39,6 +43,7 @@ set(TST_ROOT "${PROJECT_SOURCE_DIR}/test")
 include_directories(SYSTEM ${CPPREST_INCLUDE_DIR} ${Boost_INCLUDE_DIR})
 include_directories(${HDR_ROOT})
 
+add_subdirectory(proto)
 add_subdirectory(${SRC_ROOT})
 
 # Tests

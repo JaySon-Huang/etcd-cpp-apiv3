@@ -16,6 +16,9 @@ set(PROTO_SOURCES ${V3_PROTO_ROOT}/auth.pb.cc
 		${V3_PROTO_ROOT}/kv.pb.cc
 		${V3_PROTO_ROOT}/rpc.pb.cc
 		${V3_PROTO_ROOT}/rpc.grpc.pb.cc)
+set_source_files_properties(
+        ${PROTO_SOURCES} ${PROTO_HDRS} PROPERTIES
+        GENERATED TRUE)
 
 
 set(V3_SOURCES ${V3_SRC_ROOT}/AsyncTxnResponse.cpp 
@@ -39,8 +42,8 @@ set(V3_SOURCES ${V3_SRC_ROOT}/AsyncTxnResponse.cpp
 		 ${V3_SRC_ROOT}/V3Status.cpp)
 
 add_library(${PROJECT_NAME} ${LIBRARY_TYPE} ${PROTO_SOURCES} ${V3_SOURCES} ${SOURCES})
-
-target_link_libraries(${PROJECT_NAME} ${CPPREST_LIB} boost_system ssl crypto protobuf grpc grpc++ pthread)
+add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}-protocol-etcd)
+target_link_libraries(${PROJECT_NAME} ${CPPREST_LIB} boost_system boost_chrono boost_thread ssl crypto protobuf grpc grpc++ pthread)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION lib)
 

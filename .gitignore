@@ -51,3 +51,8 @@ etcd-cpp-apiv3.config
 etcd-cpp-apiv3.creator
 etcd-cpp-apiv3.files
 etcd-cpp-apiv3.includes
+
+# intellij idea
+.idea/
+cmake-build-*
+include/etcd/v3/proto/*
